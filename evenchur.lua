@@ -277,6 +277,7 @@ game = {
 				north = "COSI",
 				west = "Concrete",
 				east = "SC3Collins",
+				down = "SC2EastStairwell"
 			},
 		},
 		Concrete = {
@@ -338,6 +339,30 @@ game = {
 			desc = "The ramp goes down to the south.",
 			links = {
 				south = "ChairwellBottom",
+			},
+		},
+		SC2EastStairwell = {
+			name = "the floor below COSI",
+			desc = "There are stairs going up and down a floor. A poster labelled \"Chemistry\" is on the wall.",
+			links = {
+				up = "SC3Hall",
+				--down = ""
+				east = "OutsidePeplOffice"
+			},
+		},
+		OutsidePeplOffice = {
+			name = "Outside Peploski's Office",
+			desc = "You are in the part of Science Center ouside Peploski's Office. There is also a door outside that doesn't work because no one has implemented the outdoors yet",
+			links = {
+				west = "SC2EastStairwell",
+				south = "PeplOffice",
+			},
+		},
+		PeplOffice = {
+			name = "Peploski's Office",
+			desc = "The room is a standard office for a professor. Stochiometry is written on the whiteboard.",
+			links = {
+				north = "OutsidePeplOffice",
 			},
 		},
 	},
@@ -921,8 +946,13 @@ function print_status()
 	end
 	for dir, rm in pairs(room:get_links()) do
 		local rmo = game.rooms[rm]
-		if rmo ~= nil then
-			ret = ret .. "\n" .. rmo.name .. " is to the " .. dir .. "."
+		rmoname = rmo.name:sub(0,1):upper() .. rmo.name:sub(2)	
+		if dir == "up" then
+			ret = ret .. "\n" .. rmoname .. " is above you."
+		elseif dir == "down" then
+                        ret = ret .. "\n" .. rmoname .. " is below you."
+		elseif rmo ~= nil then
+			ret = ret .. "\n" .. rmoname .. " is to the " .. dir .. "."
 		end
 	end
 	return colors.status .. ret .. colors.reset
