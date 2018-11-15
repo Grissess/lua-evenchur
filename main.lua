@@ -6,7 +6,7 @@ while true do
 	io.write(evenchur.colors.prompt .. "evenchur> ")
 	local line = io.read()
 	if line == nil then
-		print('\x1b[1;37;41mu fukn ded m8\x1b[m')
+		print('\x1b[1;37;41rip and bye\x1b[m')
 		break
 	end
 	line = line:gsub("\n", "")
