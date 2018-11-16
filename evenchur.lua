@@ -10,6 +10,7 @@ local colors = {
 	status = "\x1b[32m",
 	problem = "\x1b[33m",
 	error = "\x1b[1;31m",
+	extreme = "\x1b[1;37;45;5m",
 	debug = "\x1b[34m",
 	npc = {
 		good = "\x1b[1;32m",
@@ -157,6 +158,25 @@ local put_success_into = {
 	"You gently shove the $OBJECT into the $DEST.",
 }
 
+local cs_names = {
+	"THE MAINFRAME OF EXISTENCE EMITS INCOMPREHENSIBLE MELODIES WHICH BEGIN THE UNIVERSE." ,
+	"THE VERY FABRIC OF BEING BENDS TO YOUR BECK AND CALL.",
+	"THE AIR IS HEAVY WITH THE SCENT OF OMNISCIENCE.",
+	"YOU FEEL THE TOUCH OF ANOTHER UNIVERSE SPINNING INTO EXISTENCE. IT IS RIGHT AND GOOD.",
+}
+
+local cs_err = {
+	"YOU IMPUGN THE NATURE OF BEING WITH YOUR BROKEN PROGRAMS. IT TELLS YOU THAT YOU SHOULD BE ASHAMED. YOU ARE NOW ASHAMED.",
+	"THE BENEVOLENT CONSTITUENTS OF EVERYTHING GLADLY ASSIST YOU IN PRETENDING THAT YOU NEVER WROTE SUCH ERRANT CODE.",
+	"YOU WHISPER SWEET IMPOSSIBILITIES OF LOGIC INTO THE VOID OF PURE NOTHING, WHERE THEY HARMLESSLY VANISH INSTEAD OF TEARING THE UNIVERSE ASUNDER.",
+}
+
+local cs_success = {
+	"YOU WHISPER TO THE UNIVERSE, AND IT WHISPERS BACK TO YOU: $RESULT",
+	"AS IF IT HAD BEEN A FACT OF EXISTENCE THE ENTIRE TIME, A $RESULT POPS INTO YOUR MIND.",
+	"AN INFINITE HIERARCHY OF STRUCTURE BEARS DOWN UPON THEE AND CALLS $RESULT INTO EXISTENCE.",
+}
+
 local game
 
 function Inv.new()
@@ -244,6 +264,7 @@ local state = {
 	carry_limit = 30,
 	debug = true,
 	mode = "evenchur",
+	cs_err_cnt = 0,
 }
 
 function ai_wander(self)
@@ -304,7 +325,7 @@ game = {
 				north = "COSI",
 				west = "Concrete",
 				east = "SC3Collins",
-				down = "SC2EastStairwell"
+				down = "SC2EastStairwell",
 			},
 		},
 		Concrete = {
@@ -395,6 +416,13 @@ game = {
 				whiteboard = 1,
 				marker = 1,
 			}),
+		},
+		ComputationalSingularity = {
+			name = "the Core of the Computational Singularity",
+			desc = colors.extreme .. cs_names[1] .. colors.reset,
+			links = {
+				up = "ServerRoom",
+			},
 		},
 	},
 	objects = {
@@ -512,6 +540,10 @@ game = {
 						state.get_room("ChairwellBottom"):get_links().south = "ServerRoom"
 						state.get_room("ITL"):get_links().north = "ServerRoom"
 						state.get_room("COSI"):get_links().north = "ServerRoom"
+						if game.objects.chair.inv:get("fridge") > 0 and game.objects.fridge.inv:get("fork_bomb") > 0 then
+							ret = ret .. colors.extreme .. "\nA SINGULARITY APPEARS WITHIN THE CONFINES OF THE SERVER ROOM." .. colors.reset
+							state.get_room("ServerRoom"):get_links().down = "ComputationalSingularity"
+						end
 					else
 						state.room = "ChairwellBottom"
 					end
@@ -613,11 +645,7 @@ game = {
 			desc = colors.big_problem .. "It radiates with unimaginable power." .. colors.reset,
 			weight = 0.13,
 			use = function()
-				state.fork_bombing = true
-				for name, room in pairs(game.rooms) do
-					room = Room.from(room)
-					room:get_inv():add("fork_bomb", 1)
-				end
+				state.fork_bombing = 3
 				return colors.big_problem .. "What have you done?!" .. colors.reset
 			end,
 		},
@@ -633,6 +661,29 @@ game = {
 			use = function(rest)
 				if state.inv:get("whiteboard") < 1 and state.get_room():get_inv():get("whiteboard") < 1 then
 					return choose(mark_no_wb)
+				end
+				if state.room == 'ComputationalSingularity' then
+					local ex = table.concat(rest, " ")
+					if ex:sub(0, 1) == "=" then ex = "return " .. ex:sub(2) end
+					local chunk, err = load(ex)
+					if chunk == nil then
+						if state.debug then
+							print(colors.debug .. "The error is: " .. tostring(err) .. colors.reset)
+						end
+						state.cs_err_cnt = state.cs_err_cnt + 1
+						if state.cs_err_cnt >= 3 then game.npcs.tino.room = "ComputationalSingularity" end
+						return colors.extreme .. choose(cs_err) .. colors.reset
+					end
+					local ok, result = pcall(chunk)
+					if not ok then
+						if state.debug then
+							print(colors.debug .. "The error is: " .. tostring(err) .. colors.reset)
+						end
+						state.cs_err_cnt = state.cs_err_cnt + 1
+						if state.cs_err_cnt >= 3 then game.npcs.tino.room = "ComputationalSingularity" end
+						return colors.extreme .. choose(cs_err) .. colors.reset
+					end
+					return colors.extreme .. template(choose(cs_success), {RESULT = colors.item .. tostring(result) .. colors.extreme}) .. colors.reset
 				end
 				local was_written = (game.objects.whiteboard.desc ~= "Nothing is written on it.")
 				if #rest >= 1 then
@@ -661,6 +712,12 @@ game = {
 			dispos = "bad",
 			room = "Concrete",
 			think = function(self)
+				if self.room == state.room then
+					if self.room == 'ComputationalSingularity' then
+						state.finished = describe_npc(self) .. colors.big_problem .. " has decided to destroy you for finding the secrets of his vast power. Better luck next time!" .. colors.reset
+						return describe_npc(self) .. colors.big_problem .. " administers a Tino Exam!" .. colors.reset
+					end
+				end
 				ai_wander(self)
 				if self.room == state.room then
 					return describe_npc(self) .. " happens upon you, but is ambivalent to your existence."
@@ -683,13 +740,23 @@ game = {
 					end
 				end
 			end
-			if state.fork_bombing then
+			if state.fork_bombing == 0 then
 				local inv = room:get_inv()
 				inv:add("fork_bomb", inv:get("fork_bomb"))
 			end
 		end
-		if state.fork_bombing then
+		game.rooms.ComputationalSingularity.desc = colors.extreme .. choose(cs_names) .. colors.reset
+		if state.fork_bombing == 0 then
 			state.inv:add("fork_bomb", state.inv:get("fork_bomb"))
+		end
+		for oname, obj in pairs(game.objects) do
+			if state.fork_bombing == 0 and obj.inv ~= nil then
+				obj.inv:add("fork_bomb", obj.inv:get("fork_bomb"))
+			end
+		end
+		if state.fork_bombing ~= nil and state.fork_bombing > 0 then
+			ret = ret .. colors.big_problem .. "\nYou have " .. tostring(state.fork_bombing) .. " seconds before things get ugly." .. colors.reset
+			state.fork_bombing = state.fork_bombing - 1
 		end
 		if state.get_room("Collins").extinguished then
 			state.finished = colors.big_problem .. "Tony Collins has decided to expel you from the university in thanks for the new powder coating in his room. Better luck next time!" .. colors.reset
@@ -1004,6 +1071,10 @@ commands = {
 			ret = ret .. "- " .. k .. "\n"
 		end
 		return ret
+	end,
+	cheat = function(rest)
+		state.inv:add("materializer", 1)
+		return "'kay."
 	end,
 }
 
