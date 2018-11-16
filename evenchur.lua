@@ -11,6 +11,10 @@ local colors = {
 	problem = "\x1b[33m",
 	error = "\x1b[1;31m",
 	debug = "\x1b[34m",
+	npc = {
+		good = "\x1b[1;32m",
+		bad = "\x1b[1;35m",
+	}
 }
 colors.big_problem = colors.error
 
@@ -225,12 +229,30 @@ function detect_inv_cycle(obj, seen)
 	return false
 end
 
+function describe_npc(npc)
+	return colors.npc[npc.dispos] .. npc.name .. colors.reset
+end
+
 local state = {
 	inv = Inv(),
 	room = "COSI",
 	carry_limit = 30,
 	debug = true,
+	mode = "evenchur",
 }
+
+function ai_wander(self)
+	local links = state.get_room(self.room):get_links()
+	if next(links) == nil then return false end
+	local dirs = {}
+	for dir, _ in pairs(links) do
+		table.insert(dirs, dir)
+	end
+	local which = dirs[1 + math.floor(math.random() * #dirs)]
+	self.room = links[which]
+	--print(colors.debug .. self.name .. " moves to " .. self.room .. colors.reset)
+	return true
+end
 
 game = {
 	rooms = {
@@ -591,6 +613,21 @@ game = {
 			end,
 		},
 	},
+	npcs = {
+		tino = {
+			name = "Tino",
+			desc = "He is a living quantum computer.",
+			dispos = "bad",
+			room = "Concrete",
+			think = function(self)
+				ai_wander(self)
+				if self.room == state.room then
+					return describe_npc(self) .. " happens upon you, but is ambivalent to your existence."
+				end
+				return ""
+			end,
+		},
+	},
 	post_tick = function()
 		local ret = ''
 		for name, room in pairs(game.rooms) do
@@ -653,6 +690,12 @@ game = {
 			state.immobile = true
 		else
 			state.immobile = false
+		end
+		for nm, npc in pairs(game.npcs) do
+			local s = npc.think(npc)
+			if string.len(s) > 0 then
+				ret = ret .. "\n" .. s
+			end
 		end
 		return ret
 	end,
@@ -727,6 +770,15 @@ local link_alias = {
 	w = "west",
 	u = "up",
 	d = "down",
+}
+
+local link_desc = {
+	north = "to the north",
+	south = "to the south",
+	east = "to the east",
+	west = "to the west",
+	up = "above you",
+	down = "below you",
 }
 
 local commands
@@ -893,6 +945,9 @@ commands = {
 		return ret
 	end,
 	help = function(rest)
+		if math.random() < 0.1 then
+			return colors.problem .. "You call out for help. It falls on deaf ears." .. colors.reset
+		end
 		local ret = "After spending a moment in deep contemplation, you come up with a list of things you think you can do:\n"
 		for k, _ in pairs(commands) do
 			ret = ret .. "- " .. k .. "\n"
@@ -941,18 +996,19 @@ function print_status()
 	if room.desc ~= nil then
 		ret = ret .. " " .. room.desc
 	end
+	for nm, npc in pairs(game.npcs) do
+		if npc.room == state.room then
+			ret = "\n" .. describe_npc(npc) .. " is here."
+		end
+	end
 	if room.extinguished then
 		ret = ret .. "\n" .. colors.big_problem .. "The room is absolutely covered in white dust." .. colors.reset
 	end
 	for dir, rm in pairs(room:get_links()) do
 		local rmo = game.rooms[rm]
-		rmoname = rmo.name:sub(0,1):upper() .. rmo.name:sub(2)	
-		if dir == "up" then
-			ret = ret .. "\n" .. rmoname .. " is above you."
-		elseif dir == "down" then
-                        ret = ret .. "\n" .. rmoname .. " is below you."
-		elseif rmo ~= nil then
-			ret = ret .. "\n" .. rmoname .. " is to the " .. dir .. "."
+		if rmo ~= nil then
+			local rmoname = rmo.name:sub(0,1):upper() .. rmo.name:sub(2)	
+			ret = ret .. "\n" .. rmoname .. " is " .. link_desc[dir] .. "."
 		end
 	end
 	return colors.status .. ret .. colors.reset
