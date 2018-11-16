@@ -43,9 +43,9 @@ local mark_no_wb = {
 
 local go_fail = {
 	"You cannot go $DIRECTION.",
-	"Your passage to $DIRECTION is blocked.",
-	"A wall greets you to the $DIRECTION.",
-	"The $DIRECTION is impassible.",
+	"Your passage $DESCR is blocked.",
+	"A wall greets you $DESCR.",
+	"$DESCR is impassible.",
 }
 
 local go_empty = {
@@ -175,6 +175,43 @@ local cs_success = {
 	"YOU WHISPER TO THE UNIVERSE, AND IT WHISPERS BACK TO YOU: $RESULT",
 	"AS IF IT HAD BEEN A FACT OF EXISTENCE THE ENTIRE TIME, A $RESULT POPS INTO YOUR MIND.",
 	"AN INFINITE HIERARCHY OF STRUCTURE BEARS DOWN UPON THEE AND CALLS $RESULT INTO EXISTENCE.",
+}
+
+local vowel = {
+	a = true,
+	e = true,
+	i = true,
+	o = true,
+	u = true,
+}
+
+local link_alias = {
+	n = "north",
+	s = "south",
+	e = "east",
+	w = "west",
+	u = "up",
+	d = "down",
+}
+
+local link_desc = setmetatable({
+	north = "to the north",
+	south = "to the south",
+	east = "to the east",
+	west = "to the west",
+	up = "above you",
+	down = "below you",
+}, {__index = function(s, k)
+	local v = 'to the ' .. k
+	s[k] = v
+	return v
+end})
+
+local prepositions = {
+	on = true,
+	["in"] = true,
+	with = true,
+	from = true,
 }
 
 local game
@@ -704,6 +741,11 @@ game = {
 				end
 			end,
 		},
+		core = {
+			name = "Computational Core",
+			desc = colors.extreme .. "IT IS THE CENTER OF ALL WORLDS." .. colors.reset,
+			weight = 5,
+		},
 	},
 	npcs = {
 		tino = {
@@ -777,7 +819,7 @@ game = {
 		for dir, rname in pairs(state.get_room():get_links()) do
 			local room = state.get_room(rname)
 			if room.on_fire then
-				ret = ret .. colors.problem .. "You see some smoke coming out of " .. room.name .. " to the " .. dir .. ".\n" .. colors.reset
+				ret = ret .. colors.problem .. "You see some smoke coming out of " .. room.name .. " " .. link_desc[dir] .. ".\n" .. colors.reset
 			end
 		end
 		for oname, obj in pairs(game.objects) do
@@ -831,14 +873,6 @@ function template(str, temps)
 	return str
 end
 
-local vowel = {
-	a = true,
-	e = true,
-	i = true,
-	o = true,
-	u = true,
-}
-
 function describe_item(oname, amt)
 	local phrase = tostring(amt) .. " " .. colors.item .. oname .. colors.reset .. "s"
 	local a = "a"
@@ -871,31 +905,6 @@ function get_obj_params(oname)
 	return oname, tpl, obj
 end
 
-local link_alias = {
-	n = "north",
-	s = "south",
-	e = "east",
-	w = "west",
-	u = "up",
-	d = "down",
-}
-
-local link_desc = {
-	north = "to the north",
-	south = "to the south",
-	east = "to the east",
-	west = "to the west",
-	up = "above you",
-	down = "below you",
-}
-
-local prepositions = {
-	on = true,
-	["in"] = true,
-	with = true,
-	from = true,
-}
-
 local commands
 commands = {
 	go = function(rest)
@@ -908,7 +917,7 @@ commands = {
 			state.room = new_room
 			return "You move to " .. state.get_room(new_room).name .. "."
 		end
-		return template(choose(go_fail), {DIRECTION = dir})
+		return template(choose(go_fail), {DIRECTION = dir, DESCR = link_desc[dir]})
 	end,
 	use = function(rest)
 		if #rest < 1 then return choose(use_empty) end
@@ -1104,7 +1113,7 @@ function exec(line)
 	local cmd = table.remove(parts, 1)
 	local cmdf = commands[cmd]
 	if cmdf == nil then
-		return template(choose(exec_fail), {COMMAND = cmd})
+		return template(choose(exec_fail), {COMMAND = colors.prompt .. cmd .. colors.reset})
 	end
 	return cmdf(parts)
 end
