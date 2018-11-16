@@ -83,6 +83,24 @@ local use_not_useful = {
 	"You can't find out how to use the $OBJECT.",
 }
 
+local use_ext_not_useful_except_inv = {
+	"It seems like the $OBJECT would be more useful if you were lugging it around.",
+	"How do you use $A $OBJECT from across the room?",
+	"Maybe you should try picking up the $OBJECT."
+}
+
+local use_ext_not_useful = {
+	"The $OBJECT doesn't seem useful.",
+	"You can't find out how to use the $OBJECT.",
+}
+
+local use_ext_not_useful_stupid = {
+	"Please find the nearest real-world instance of $A $OBJECT, and ask somebody how to use it.",
+	"Maybe you should read an instruction manual for $A $OBJECT.",
+	"You know, maybe you're going about this the wrong way.",
+	"Have you ever seen $A $OBJECT used in real life?",
+}
+
 local use_no_used = {
 	"Use what on that?",
 	"What are you using on that?",
@@ -219,6 +237,7 @@ local game
 function Inv.new()
 	return setmetatable({}, Inv.mt)
 end
+
 setmetatable(Inv, {__call = function(...) return Inv.new() end})
 
 function Inv:clone()
@@ -361,9 +380,24 @@ game = {
 			links = {
 				north = "COSI",
 				west = "Concrete",
+				south = "SC3MBathroom",
 				east = "SC3Collins",
 				down = "SC2EastStairwell",
 			},
+		},
+		SC3MBathroom = {
+			name = "the men's restroom near COSI",
+			desc = "Despite the vigilant efforts of Carol, the room has a noticeable odor.",
+			links = {
+				north = "SC3Hall",
+			},
+		},
+		SC3JankLanding = {
+			name = "a small annex with an elevator door",
+			desc = "You find your yourself in a small room with an open connection to a nearby hallway. You see some equipment no doubt used by the maintainance personnel and, perhaps most importantly, an elevator door.",
+			links = {
+				north = "Concrete"
+			}
 		},
 		Concrete = {
 			name = "Concrete Cafe",
@@ -371,6 +405,7 @@ game = {
 			links = {
 				east = "SC3Hall",
 				down = "SC2WestStairwell",
+				south = "SC3JankLanding",
 			},
 			inv = Inv.clone({
 				fork = 1,
@@ -824,27 +859,27 @@ game = {
 			desc = "An Erlenmeyer flask with a funky liquid in it.",
 			weight = 0.5,
 			use = function(rest)
-					if state.room == 'FreshmenPhysLab' then
-						if not game.rooms[state.room].shenanigans then
-							state.inv:add("strange_flask", -1)
-							state.inv:add("empty_flask", 1)
-							game.rooms[state.room].shenanigans = true
-							game.rooms[state.room].desc = "The wrecked lab is before you. Scrap from broken machinery is all over the room, and the strange chemicals you spilled earlier still float in the room."
-							return "You open the strange flask and throw its contents into the room.\n" .. colors.big_problem .. "The chemicals, instead of falling to the ground, float in the air! This is a violation of physics!! Every computer in the lab simultaneously kernel panics. The remaining devices in the room explode like metallic popcorn. The physics TA and other students run around frantically, avoiding the still floating chemicals.\n" .. colors.problem .. "You are sure that you have lived up to \"Defy Convention\" and \"Ignite\"." .. colors.reset
-						else
-							return "You spill the chemicals again, but they don't have any further effect."
-						end
+				if state.room == 'FreshmenPhysLab' then
+					if not game.rooms[state.room].shenanigans then
+						state.inv:add("strange_flask", -1)
+						state.inv:add("empty_flask", 1)
+						game.rooms[state.room].shenanigans = true
+						game.rooms[state.room].desc = "The wrecked lab is before you. Scrap from broken machinery is all over the room, and the strange chemicals you spilled earlier still float in the room."
+						return "You open the strange flask and throw its contents into the room.\n" .. colors.big_problem .. "The chemicals, instead of falling to the ground, float in the air! This is a violation of physics!! Every computer in the lab simultaneously kernel panics. The remaining devices in the room explode like metallic popcorn. The physics TA and other students run around frantically, avoiding the still floating chemicals.\n" .. colors.problem .. "You are sure that you have lived up to \"Defy Convention\" and \"Ignite\"." .. colors.reset
 					else
-						return "You don't see a particularly good use for this right now"
+						return "You spill the chemicals again, but they don't have any further effect."
 					end
-				end,
+				else
+					return "You don't see a particularly good use for this right now"
+				end
+			end,
 		},
 		empty_flask = {
 			name = "Empty Flask",
 			desc = "An empty Erlenmeyer flask",
 			weight = 0.2,
 			use = function(rest)
-					return "Empty glass labware doesn't seem all that useful here."
+				return "Empty glass labware doesn't seem all that useful here."
 			end,
 			on_put = function(rest)
 				if state.room == 'PeplOffice' then
@@ -859,18 +894,18 @@ game = {
 			desc = "An odd device the size of your palm that feels super heavy for its size and full of physical things.",
 			weight = 9.81,
 			use = function(rest)
-					if state.room == 'FreshmenChemLab' then
-						if not game.rooms[state.room].shenanigans then
-							game.rooms[state.room].shenanigans = true
-							game.rooms[state.room].desc = "The lab is covered in a rainbow dust as a result of your shenanigans. You wonder how many two weeks it will take to finish cleaning this."
-							return "You turn on the peculiar gizmo. It whirs quietly as mechanics inside it run\n" .. colors.big_problem .. "Eventually, sparks and arcs fly from the gizmo. It's producing its own energy, for free! This is a violation of thermodynamics!! All of the chemistry labs proceed in the opposite direction they are supposed to before exploding into a shower of sparkles. Everyone in the room is panicing while the TA tries to use the fire extinguisher, which is instead spraying silly string that for some reason still works.\n" .. colors.problem .. "You are sure that you have lived up to \"Defy Convention\" and \"Ignite\"." .. colors.reset
-						else
-							return "You power on the gizmo again, but it doesn't have any further effect."
-						end
+				if state.room == 'FreshmenChemLab' then
+					if not game.rooms[state.room].shenanigans then
+						game.rooms[state.room].shenanigans = true
+						game.rooms[state.room].desc = "The lab is covered in a rainbow dust as a result of your shenanigans. You wonder how many two weeks it will take to finish cleaning this."
+						return "You turn on the peculiar gizmo. It whirs quietly as mechanics inside it run\n" .. colors.big_problem .. "Eventually, sparks and arcs fly from the gizmo. It's producing its own energy, for free! This is a violation of thermodynamics!! All of the chemistry labs proceed in the opposite direction they are supposed to before exploding into a shower of sparkles. Everyone in the room is panicing while the TA tries to use the fire extinguisher, which is instead spraying silly string that for some reason still works.\n" .. colors.problem .. "You are sure that you have lived up to \"Defy Convention\" and \"Ignite\"." .. colors.reset
 					else
-						return "You don't see a particularly good use for this right now"
+						return "You power on the gizmo again, but it doesn't have any further effect."
 					end
-				end,
+				else
+					return "You don't see a particularly good use for this right now"
+				end
+			end,
 		},
 	},
 	npcs = {
@@ -1034,6 +1069,10 @@ end
 local commands
 commands = {
 	go = function(rest)
+		if state.get_room().on_go then
+			c, out = state.get_room().on_go(rest)
+			if c then return out end
+		end
 		if #rest < 1 then return choose(go_empty) end
 		if state.immobile then return choose(go_immobile) end
 		local dir = rest[1]
@@ -1051,6 +1090,7 @@ commands = {
 			return template(choose(use_no_used), tpl)
 		end
 		local level = 1
+		local isinroom = nil
 		local curobj = state
 		local oname, tpl, obj
 		while level <= #rest do
@@ -1061,12 +1101,27 @@ commands = {
 			end
 			local amt = curobj.inv:get(oname)
 			if amt < 1 then
-				return template(choose(not_in_inv), tpl)
+				amt = state.get_room():get_inv():get(oname)
+				if level == 1 and amt >= 1 then
+					isinroom = true
+					curobj = obj
+				else
+					return template(choose(not_in_inv), tpl)
+				end
 			end
+			curobj = obj
 			level = level + 1
 		end
-		if obj.use == nil then
-			return template(choose(use_not_useful), tpl)
+		if isinroom then
+			if obj.ext_use == nil then
+				if obj.use ~= nil then return template(choose(use_ext_not_useful_except_inv), tpl) end
+				return template(choose(use_not_useful), tpl)
+			end
+			return obj.ext_use({table.unpack(rest, level + 1)})
+		else
+			if obj.use == nil then
+				return template(choose(use_not_useful), tpl)
+			end
 		end
 		return obj.use({table.unpack(rest, level + 1)})
 	end,
