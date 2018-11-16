@@ -82,6 +82,24 @@ local use_not_useful = {
 	"You can't find out how to use the $OBJECT.",
 }
 
+local use_ext_not_useful_except_inv = {
+  "It seems like the $OBJECT would be more useful if you were lugging it around.",
+  "How do you use $A $OBJECT from across the room?",
+  "Maybe you should try picking up the $OBJECT."
+}
+
+local use_ext_not_useful = {
+	"The $OBJECT doesn't seem useful.",
+	"You can't find out how to use the $OBJECT.",
+}
+
+local use_ext_not_useful_stupid = {
+  "Please find the nearest real-world instance of $A $OBJECT, and ask somebody how to use it.",
+  "Maybe you should read an instruction manual for $A $OBJECT.",
+  "You know, maybe you're going about this the wrong way.",
+  "Have you ever seen $A $OBJECT used in real life?",
+}
+
 local use_no_used = {
 	"Use what on that?",
 	"What are you using on that?",
@@ -162,6 +180,7 @@ local game
 function Inv.new()
 	return setmetatable({}, Inv.mt)
 end
+
 setmetatable(Inv, {__call = function(...) return Inv.new() end})
 
 function Inv:clone()
@@ -303,15 +322,31 @@ game = {
 			links = {
 				north = "COSI",
 				west = "Concrete",
+        south = "SC3MBathroom",
 				east = "SC3Collins",
 				down = "SC2EastStairwell"
 			},
 		},
+    SC3MBathroom = {
+      name = "the men's restroom near COSI",
+      desc = "Despite the vigilant efforts of Carol, the room has a noticeable odor.",
+      links = {
+        north = "SC3Hall",
+      },
+    },
+    SC3JankLanding = {
+      name = "a small annex with an elevator door",
+      desc = "You find your yourself in a small room with an open connection to a nearby hallway. You see some equipment no doubt used by the maintainance personnel and, perhaps most importantly, an elevator door.",
+      links = {
+        north = "Concrete"
+      }
+    },
 		Concrete = {
 			name = "Concrete Cafe",
 			desc = "The Cafe is closed right now. Everything is spotless, except for the pockmark from where a brick crashed through the skylight.",
 			links = {
 				east = "SC3Hall",
+        south = "SC3JankLanding" 
 			},
 			inv = Inv.clone({
 				fork = 1,
@@ -832,6 +867,10 @@ local prepositions = {
 local commands
 commands = {
 	go = function(rest)
+    if state.get_room().on_go then
+      c, out = state.get_room().on_go(rest)
+      if c then return out end
+    end
 		if #rest < 1 then return choose(go_empty) end
 		if state.immobile then return choose(go_immobile) end
 		local dir = rest[1]
@@ -849,23 +888,39 @@ commands = {
 			return template(choose(use_no_used), tpl)
 		end
 		local level = 1
+    local isinroom = nil
 		local curobj = state
 		local oname, tpl, obj
 		while level <= #rest do
 			if prepositions[rest[level]] then break end
 			oname, tpl, obj = get_obj_params(rest[level])
 			if obj == nil then
-				return template(choose(bad_name), tpl)
+        return template(choose(bad_name), tpl)
 			end
 			local amt = curobj.inv:get(oname)
 			if amt < 1 then
-				return template(choose(not_in_inv), tpl)
+        amt = state.get_room():get_inv():get(oname)
+        if level == 1 and amt >= 1 then
+          isinroom = true
+          curobj = obj
+        else
+          return template(choose(not_in_inv), tpl)
+        end
 			end
+      curobj = obj
 			level = level + 1
 		end
-		if obj.use == nil then
-			return template(choose(use_not_useful), tpl)
-		end
+    if isinroom then
+      if obj.ext_use == nil then
+        if obj.use ~= nil then return template(choose(use_ext_not_useful_except_inv), tpl) end
+        return template(choose(use_not_useful), tpl)
+      end
+		  return obj.ext_use({table.unpack(rest, level + 1)})
+    else
+      if obj.use == nil then
+        return template(choose(use_not_useful), tpl)
+      end
+    end
 		return obj.use({table.unpack(rest, level + 1)})
 	end,
 	take = function(rest)
