@@ -3,7 +3,7 @@ local evenchur = require('evenchur')
 
 while true do
 	print(evenchur.print_status())
-	io.write(evenchur.colors.prompt .. "evenchur> ")
+	io.write(evenchur.colors.prompt .. evenchur.state.mode .. "> ")
 	local line = io.read()
 	if line == nil then
 		print('\x1b[1;37;41mrip and bye\x1b[m')
