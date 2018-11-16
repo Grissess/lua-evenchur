@@ -35,6 +35,11 @@ local trans_empty = {
 	"Where are you going?",
 }
 
+local mark_no_wb = {
+	"You don't see any whiteboards for you to use this on.",
+	"You don't see an appopriate drawing surface for this.",
+}
+
 local go_fail = {
 	"You cannot go $DIRECTION.",
 	"Your passage to $DIRECTION is blocked.",
@@ -374,7 +379,7 @@ game = {
 		},
 		OutsidePeplOffice = {
 			name = "Outside Peploski's Office",
-			desc = "You are in the part of Science Center ouside Peploski's Office. There is also a door outside that doesn't work because no one has implemented the outdoors yet",
+			desc = "You are in the part of Science Center ouside Peploski's Office. There is a door outside, but it's frozen shut.",
 			links = {
 				west = "SC2EastStairwell",
 				south = "PeplOffice",
@@ -386,6 +391,10 @@ game = {
 			links = {
 				north = "OutsidePeplOffice",
 			},
+			inv = Inv.clone({
+				whiteboard = 1,
+				marker = 1,
+			}),
 		},
 	},
 	objects = {
@@ -612,6 +621,38 @@ game = {
 				return colors.big_problem .. "What have you done?!" .. colors.reset
 			end,
 		},
+		whiteboard = {
+			name = "Whiteboard",
+			desc = "Nothing is written on it.",
+			weight = 0.1,
+		},
+		marker = {
+			name = "Whiteboard marker",
+			desc = "It is a black `Expo' dry-erase marker.",
+			weight = 0.02,
+			use = function(rest)
+				if state.inv:get("whiteboard") < 1 and state.get_room():get_inv():get("whiteboard") < 1 then
+					return choose(mark_no_wb)
+				end
+				local was_written = (game.objects.whiteboard.desc ~= "Nothing is written on it.")
+				if #rest >= 1 then
+					local msg = "`" .. colors.item .. table.concat(rest, " ") .. colors.reset .. "'"
+					game.objects.whiteboard.desc = "It says " .. msg .. "."
+					if was_written then
+						return "You wipe away the old text with your sleeve, and carefully pen in " .. msg .. "."
+					else
+						return "You mark upon the clean surface, " .. msg .. "."
+					end
+				else
+					game.objects.whiteboard.desc = "Nothing is written on it."
+					if was_written then
+						return "You wipe the text away with your sleeve, and leave it blank."
+					else
+						return "You contemplate how you might write nothing on a blank whiteboard, and discover that you've already succeeded."
+					end
+				end
+			end,
+		},
 	},
 	npcs = {
 		tino = {
@@ -781,6 +822,13 @@ local link_desc = {
 	down = "below you",
 }
 
+local prepositions = {
+	on = true,
+	["in"] = true,
+	with = true,
+	from = true,
+}
+
 local commands
 commands = {
 	go = function(rest)
@@ -804,7 +852,7 @@ commands = {
 		local curobj = state
 		local oname, tpl, obj
 		while level <= #rest do
-			if rest[level] == "on" then break end
+			if prepositions[rest[level]] then break end
 			oname, tpl, obj = get_obj_params(rest[level])
 			if obj == nil then
 				return template(choose(bad_name), tpl)
@@ -869,6 +917,9 @@ commands = {
 		end
 		local inv = state.get_room():get_inv()
 		local level = 2
+		if rest[level] ~= nil and prepositions[rest[level]] then
+			level = 3
+		end
 		local invoname, invtpl, invobj
 		while level <= #rest do
 			invoname, invtpl, invobj = get_obj_params(rest[level])
