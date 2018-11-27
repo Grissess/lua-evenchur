@@ -10,7 +10,12 @@ local colors = {
 	status = "\x1b[32m",
 	problem = "\x1b[33m",
 	error = "\x1b[1;31m",
+	extreme = "\x1b[1;37;45;5m",
 	debug = "\x1b[34m",
+	npc = {
+		good = "\x1b[1;32m",
+		bad = "\x1b[1;35m",
+	}
 }
 colors.big_problem = colors.error
 
@@ -31,11 +36,16 @@ local trans_empty = {
 	"Where are you going?",
 }
 
+local mark_no_wb = {
+	"You don't see any whiteboards for you to use this on.",
+	"You don't see an appopriate drawing surface for this.",
+}
+
 local go_fail = {
 	"You cannot go $DIRECTION.",
-	"Your passage to $DIRECTION is blocked.",
-	"A wall greets you to the $DIRECTION.",
-	"The $DIRECTION is impassible.",
+	"Your passage $DESCR is blocked.",
+	"A wall greets you $DESCR.",
+	"$DESCR is impassible.",
 }
 
 local go_empty = {
@@ -148,6 +158,62 @@ local put_success_into = {
 	"You gently shove the $OBJECT into the $DEST.",
 }
 
+local cs_names = {
+	"THE MAINFRAME OF EXISTENCE EMITS INCOMPREHENSIBLE MELODIES WHICH BEGIN THE UNIVERSE." ,
+	"THE VERY FABRIC OF BEING BENDS TO YOUR BECK AND CALL.",
+	"THE AIR IS HEAVY WITH THE SCENT OF OMNISCIENCE.",
+	"YOU FEEL THE TOUCH OF ANOTHER UNIVERSE SPINNING INTO EXISTENCE. IT IS RIGHT AND GOOD.",
+}
+
+local cs_err = {
+	"YOU IMPUGN THE NATURE OF BEING WITH YOUR BROKEN PROGRAMS. IT TELLS YOU THAT YOU SHOULD BE ASHAMED. YOU ARE NOW ASHAMED.",
+	"THE BENEVOLENT CONSTITUENTS OF EVERYTHING GLADLY ASSIST YOU IN PRETENDING THAT YOU NEVER WROTE SUCH ERRANT CODE.",
+	"YOU WHISPER SWEET IMPOSSIBILITIES OF LOGIC INTO THE VOID OF PURE NOTHING, WHERE THEY HARMLESSLY VANISH INSTEAD OF TEARING THE UNIVERSE ASUNDER.",
+}
+
+local cs_success = {
+	"YOU WHISPER TO THE UNIVERSE, AND IT WHISPERS BACK TO YOU: $RESULT",
+	"AS IF IT HAD BEEN A FACT OF EXISTENCE THE ENTIRE TIME, A $RESULT POPS INTO YOUR MIND.",
+	"AN INFINITE HIERARCHY OF STRUCTURE BEARS DOWN UPON THEE AND CALLS $RESULT INTO EXISTENCE.",
+}
+
+local vowel = {
+	a = true,
+	e = true,
+	i = true,
+	o = true,
+	u = true,
+}
+
+local link_alias = {
+	n = "north",
+	s = "south",
+	e = "east",
+	w = "west",
+	u = "up",
+	d = "down",
+}
+
+local link_desc = setmetatable({
+	north = "to the north",
+	south = "to the south",
+	east = "to the east",
+	west = "to the west",
+	up = "above you",
+	down = "below you",
+}, {__index = function(s, k)
+	local v = 'to the ' .. k
+	s[k] = v
+	return v
+end})
+
+local prepositions = {
+	on = true,
+	["in"] = true,
+	with = true,
+	from = true,
+}
+
 local game
 
 function Inv.new()
@@ -225,12 +291,31 @@ function detect_inv_cycle(obj, seen)
 	return false
 end
 
+function describe_npc(npc)
+	return colors.npc[npc.dispos] .. npc.name .. colors.reset
+end
+
 local state = {
 	inv = Inv(),
 	room = "COSI",
 	carry_limit = 30,
 	debug = true,
+	mode = "evenchur",
+	cs_err_cnt = 0,
 }
+
+function ai_wander(self)
+	local links = state.get_room(self.room):get_links()
+	if next(links) == nil then return false end
+	local dirs = {}
+	for dir, _ in pairs(links) do
+		table.insert(dirs, dir)
+	end
+	local which = dirs[1 + math.floor(math.random() * #dirs)]
+	self.room = links[which]
+	--print(colors.debug .. self.name .. " moves to " .. self.room .. colors.reset)
+	return true
+end
 
 game = {
 	rooms = {
@@ -277,7 +362,7 @@ game = {
 				north = "COSI",
 				west = "Concrete",
 				east = "SC3Collins",
-				down = "SC2EastStairwell"
+				down = "SC2EastStairwell",
 			},
 		},
 		Concrete = {
@@ -352,7 +437,7 @@ game = {
 		},
 		OutsidePeplOffice = {
 			name = "Outside Peploski's Office",
-			desc = "You are in the part of Science Center ouside Peploski's Office. There is also a door outside that doesn't work because no one has implemented the outdoors yet",
+			desc = "You are in the part of Science Center ouside Peploski's Office. There is a door outside, but it's frozen shut.",
 			links = {
 				west = "SC2EastStairwell",
 				south = "PeplOffice",
@@ -363,6 +448,17 @@ game = {
 			desc = "The room is a standard office for a professor. Stochiometry is written on the whiteboard.",
 			links = {
 				north = "OutsidePeplOffice",
+			},
+			inv = Inv.clone({
+				whiteboard = 1,
+				marker = 1,
+			}),
+		},
+		ComputationalSingularity = {
+			name = "the Core of the Computational Singularity",
+			desc = colors.extreme .. cs_names[1] .. colors.reset,
+			links = {
+				up = "ServerRoom",
 			},
 		},
 	},
@@ -481,6 +577,10 @@ game = {
 						state.get_room("ChairwellBottom"):get_links().south = "ServerRoom"
 						state.get_room("ITL"):get_links().north = "ServerRoom"
 						state.get_room("COSI"):get_links().north = "ServerRoom"
+						if game.objects.chair.inv:get("fridge") > 0 and game.objects.fridge.inv:get("fork_bomb") > 0 then
+							ret = ret .. colors.extreme .. "\nA SINGULARITY APPEARS WITHIN THE CONFINES OF THE SERVER ROOM." .. colors.reset
+							state.get_room("ServerRoom"):get_links().down = "ComputationalSingularity"
+						end
 					else
 						state.room = "ChairwellBottom"
 					end
@@ -582,12 +682,89 @@ game = {
 			desc = colors.big_problem .. "It radiates with unimaginable power." .. colors.reset,
 			weight = 0.13,
 			use = function()
-				state.fork_bombing = true
-				for name, room in pairs(game.rooms) do
-					room = Room.from(room)
-					room:get_inv():add("fork_bomb", 1)
-				end
+				state.fork_bombing = 3
 				return colors.big_problem .. "What have you done?!" .. colors.reset
+			end,
+		},
+		whiteboard = {
+			name = "Whiteboard",
+			desc = "Nothing is written on it.",
+			weight = 0.1,
+		},
+		marker = {
+			name = "Whiteboard marker",
+			desc = "It is a black `Expo' dry-erase marker.",
+			weight = 0.02,
+			use = function(rest)
+				if state.inv:get("whiteboard") < 1 and state.get_room():get_inv():get("whiteboard") < 1 then
+					return choose(mark_no_wb)
+				end
+				if state.room == 'ComputationalSingularity' then
+					local ex = table.concat(rest, " ")
+					if ex:sub(0, 1) == "=" then ex = "return " .. ex:sub(2) end
+					local chunk, err = load(ex)
+					if chunk == nil then
+						if state.debug then
+							print(colors.debug .. "The error is: " .. tostring(err) .. colors.reset)
+						end
+						state.cs_err_cnt = state.cs_err_cnt + 1
+						if state.cs_err_cnt >= 3 then game.npcs.tino.room = "ComputationalSingularity" end
+						return colors.extreme .. choose(cs_err) .. colors.reset
+					end
+					local ok, result = pcall(chunk)
+					if not ok then
+						if state.debug then
+							print(colors.debug .. "The error is: " .. tostring(err) .. colors.reset)
+						end
+						state.cs_err_cnt = state.cs_err_cnt + 1
+						if state.cs_err_cnt >= 3 then game.npcs.tino.room = "ComputationalSingularity" end
+						return colors.extreme .. choose(cs_err) .. colors.reset
+					end
+					return colors.extreme .. template(choose(cs_success), {RESULT = colors.item .. tostring(result) .. colors.extreme}) .. colors.reset
+				end
+				local was_written = (game.objects.whiteboard.desc ~= "Nothing is written on it.")
+				if #rest >= 1 then
+					local msg = "`" .. colors.item .. table.concat(rest, " ") .. colors.reset .. "'"
+					game.objects.whiteboard.desc = "It says " .. msg .. "."
+					if was_written then
+						return "You wipe away the old text with your sleeve, and carefully pen in " .. msg .. "."
+					else
+						return "You mark upon the clean surface, " .. msg .. "."
+					end
+				else
+					game.objects.whiteboard.desc = "Nothing is written on it."
+					if was_written then
+						return "You wipe the text away with your sleeve, and leave it blank."
+					else
+						return "You contemplate how you might write nothing on a blank whiteboard, and discover that you've already succeeded."
+					end
+				end
+			end,
+		},
+		core = {
+			name = "Computational Core",
+			desc = colors.extreme .. "IT IS THE CENTER OF ALL WORLDS." .. colors.reset,
+			weight = 5,
+		},
+	},
+	npcs = {
+		tino = {
+			name = "Tino",
+			desc = "He is a living quantum computer.",
+			dispos = "bad",
+			room = "Concrete",
+			think = function(self)
+				if self.room == state.room then
+					if self.room == 'ComputationalSingularity' then
+						state.finished = describe_npc(self) .. colors.big_problem .. " has decided to destroy you for finding the secrets of his vast power. Better luck next time!" .. colors.reset
+						return describe_npc(self) .. colors.big_problem .. " administers a Tino Exam!" .. colors.reset
+					end
+				end
+				ai_wander(self)
+				if self.room == state.room then
+					return describe_npc(self) .. " happens upon you, but is ambivalent to your existence."
+				end
+				return ""
 			end,
 		},
 	},
@@ -605,13 +782,23 @@ game = {
 					end
 				end
 			end
-			if state.fork_bombing then
+			if state.fork_bombing == 0 then
 				local inv = room:get_inv()
 				inv:add("fork_bomb", inv:get("fork_bomb"))
 			end
 		end
-		if state.fork_bombing then
+		game.rooms.ComputationalSingularity.desc = colors.extreme .. choose(cs_names) .. colors.reset
+		if state.fork_bombing == 0 then
 			state.inv:add("fork_bomb", state.inv:get("fork_bomb"))
+		end
+		for oname, obj in pairs(game.objects) do
+			if state.fork_bombing == 0 and obj.inv ~= nil then
+				obj.inv:add("fork_bomb", obj.inv:get("fork_bomb"))
+			end
+		end
+		if state.fork_bombing ~= nil and state.fork_bombing > 0 then
+			ret = ret .. colors.big_problem .. "\nYou have " .. tostring(state.fork_bombing) .. " seconds before things get ugly." .. colors.reset
+			state.fork_bombing = state.fork_bombing - 1
 		end
 		if state.get_room("Collins").extinguished then
 			state.finished = colors.big_problem .. "Tony Collins has decided to expel you from the university in thanks for the new powder coating in his room. Better luck next time!" .. colors.reset
@@ -632,7 +819,7 @@ game = {
 		for dir, rname in pairs(state.get_room():get_links()) do
 			local room = state.get_room(rname)
 			if room.on_fire then
-				ret = ret .. colors.problem .. "You see some smoke coming out of " .. room.name .. " to the " .. dir .. ".\n" .. colors.reset
+				ret = ret .. colors.problem .. "You see some smoke coming out of " .. room.name .. " " .. link_desc[dir] .. ".\n" .. colors.reset
 			end
 		end
 		for oname, obj in pairs(game.objects) do
@@ -653,6 +840,12 @@ game = {
 			state.immobile = true
 		else
 			state.immobile = false
+		end
+		for nm, npc in pairs(game.npcs) do
+			local s = npc.think(npc)
+			if string.len(s) > 0 then
+				ret = ret .. "\n" .. s
+			end
 		end
 		return ret
 	end,
@@ -679,14 +872,6 @@ function template(str, temps)
 	end
 	return str
 end
-
-local vowel = {
-	a = true,
-	e = true,
-	i = true,
-	o = true,
-	u = true,
-}
 
 function describe_item(oname, amt)
 	local phrase = tostring(amt) .. " " .. colors.item .. oname .. colors.reset .. "s"
@@ -720,15 +905,6 @@ function get_obj_params(oname)
 	return oname, tpl, obj
 end
 
-local link_alias = {
-	n = "north",
-	s = "south",
-	e = "east",
-	w = "west",
-	u = "up",
-	d = "down",
-}
-
 local commands
 commands = {
 	go = function(rest)
@@ -741,7 +917,7 @@ commands = {
 			state.room = new_room
 			return "You move to " .. state.get_room(new_room).name .. "."
 		end
-		return template(choose(go_fail), {DIRECTION = dir})
+		return template(choose(go_fail), {DIRECTION = dir, DESCR = link_desc[dir]})
 	end,
 	use = function(rest)
 		if #rest < 1 then return choose(use_empty) end
@@ -752,7 +928,7 @@ commands = {
 		local curobj = state
 		local oname, tpl, obj
 		while level <= #rest do
-			if rest[level] == "on" then break end
+			if prepositions[rest[level]] then break end
 			oname, tpl, obj = get_obj_params(rest[level])
 			if obj == nil then
 				return template(choose(bad_name), tpl)
@@ -817,6 +993,9 @@ commands = {
 		end
 		local inv = state.get_room():get_inv()
 		local level = 2
+		if rest[level] ~= nil and prepositions[rest[level]] then
+			level = 3
+		end
 		local invoname, invtpl, invobj
 		while level <= #rest do
 			invoname, invtpl, invobj = get_obj_params(rest[level])
@@ -893,11 +1072,18 @@ commands = {
 		return ret
 	end,
 	help = function(rest)
+		if math.random() < 0.1 then
+			return colors.problem .. "You call out for help. It falls on deaf ears." .. colors.reset
+		end
 		local ret = "After spending a moment in deep contemplation, you come up with a list of things you think you can do:\n"
 		for k, _ in pairs(commands) do
 			ret = ret .. "- " .. k .. "\n"
 		end
 		return ret
+	end,
+	cheat = function(rest)
+		state.inv:add("materializer", 1)
+		return "'kay."
 	end,
 }
 
@@ -927,7 +1113,7 @@ function exec(line)
 	local cmd = table.remove(parts, 1)
 	local cmdf = commands[cmd]
 	if cmdf == nil then
-		return template(choose(exec_fail), {COMMAND = cmd})
+		return template(choose(exec_fail), {COMMAND = colors.prompt .. cmd .. colors.reset})
 	end
 	return cmdf(parts)
 end
@@ -941,18 +1127,19 @@ function print_status()
 	if room.desc ~= nil then
 		ret = ret .. " " .. room.desc
 	end
+	for nm, npc in pairs(game.npcs) do
+		if npc.room == state.room then
+			ret = "\n" .. describe_npc(npc) .. " is here."
+		end
+	end
 	if room.extinguished then
 		ret = ret .. "\n" .. colors.big_problem .. "The room is absolutely covered in white dust." .. colors.reset
 	end
 	for dir, rm in pairs(room:get_links()) do
 		local rmo = game.rooms[rm]
-		rmoname = rmo.name:sub(0,1):upper() .. rmo.name:sub(2)	
-		if dir == "up" then
-			ret = ret .. "\n" .. rmoname .. " is above you."
-		elseif dir == "down" then
-                        ret = ret .. "\n" .. rmoname .. " is below you."
-		elseif rmo ~= nil then
-			ret = ret .. "\n" .. rmoname .. " is to the " .. dir .. "."
+		if rmo ~= nil then
+			local rmoname = rmo.name:sub(0,1):upper() .. rmo.name:sub(2)	
+			ret = ret .. "\n" .. rmoname .. " is " .. link_desc[dir] .. "."
 		end
 	end
 	return colors.status .. ret .. colors.reset
