@@ -367,9 +367,10 @@ game = {
 		},
 		Concrete = {
 			name = "Concrete Cafe",
-			desc = "The Cafe is closed right now. Everything is spotless, except for the pockmark from where a brick crashed through the skylight.",
+			desc = "The Cafe is closed right now. Everything is spotless, except for the pockmark from where a brick crashed through the skylight. A stairwell is tucked behind a corner.",
 			links = {
 				east = "SC3Hall",
+				down = "SC2WestStairwell",
 			},
 			inv = Inv.clone({
 				fork = 1,
@@ -427,7 +428,7 @@ game = {
 			},
 		},
 		SC2EastStairwell = {
-			name = "the floor below COSI",
+			name = "the area one floor below COSI",
 			desc = "There are stairs going up and down a floor. A poster labelled \"Chemistry\" is on the wall.",
 			links = {
 				up = "SC3Hall",
@@ -452,6 +453,7 @@ game = {
 			inv = Inv.clone({
 				whiteboard = 1,
 				marker = 1,
+				strange_flask = 1,
 			}),
 		},
 		ComputationalSingularity = {
@@ -461,12 +463,27 @@ game = {
 				up = "ServerRoom",
 			},
 		},
+		FreshmenPhysLab = {
+			name = "the Freshmen Physics Lab",
+			desc = "There is a lab session currently being held. The TA looks at you while the students work on their labs.",
+			links = {
+				north = "SC2WestStairwell",
+			},
+		},
+		SC2WestStairwell = {
+			name = "the area one floor below Concrete Cafe",
+			desc = "There are stairs going up and down a floor.",
+			links = {
+				south = "FreshmenPhysLab",
+				up = "Concrete",
+			}
+		},
 	},
 	objects = {
 		fridge = {name = "refrigerator", desc = "A cold box usually filled with refreshing beverages and tasty victuals.", inv = Inv.clone({moxie = 1}), weight = 20},
 		moxie = {
 			name = "Moxie soda",
-			desc = "The bright orange can's fizzly liquid contents beckon to your parched throat.",
+			desc = "The bright orange can's fizzy liquid contents beckon to your parched throat.",
 			weight = 0.1,
 			use = function()
 				state.inv:add("movie", -1)
@@ -745,6 +762,25 @@ game = {
 			name = "Computational Core",
 			desc = colors.extreme .. "IT IS THE CENTER OF ALL WORLDS." .. colors.reset,
 			weight = 5,
+		},
+		strange_flask = {
+			name = "Strange Flask",
+			desc = "An Erlenmeyer flask with a funky liquid in it.",
+			weight = 0.2,
+			use = function(rest)
+					if state.room == 'FreshmenPhysLab' then
+						if not game.rooms[state.room].shenanigans then
+							state.inv:add("strange_flask", -1)
+							game.rooms[state.room].shenanigans = true
+							game.rooms[state.room].desc = "The wrecked lab is before you. Scrap from broken machinery is all over the room, and the strange chemicals you spilled earlier still float in the room."
+							return "You open the strange flask and throw its contents into the room.\n" .. colors.big_problem .. "The chemicals, instead of falling to the ground, float in the air! This is a violation of physics!! Every computer in the lab simultaneously kernel panics. The remaining devices in the room explode like metallic popcorn. The physics TA and other students run around frantically, avoiding the still floating chemicals.\n" .. colors.problem .. "You are sure that you have lived up to \"Defy Convention\" and \"Ignite\"." .. colors.reset
+						else
+							return "You spill the chemicals again, but they don't have any further effect."		
+						end
+					else
+						return "You don't see a particularly good use for this right now"
+					end
+				end,
 		},
 	},
 	npcs = {
