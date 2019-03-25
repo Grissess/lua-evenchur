@@ -84,9 +84,9 @@ local use_not_useful = {
 }
 
 local use_ext_not_useful_except_inv = {
-  "It seems like the $OBJECT would be more useful if you were lugging it around.",
-  "How do you use $A $OBJECT from across the room?",
-  "Maybe you should try picking up the $OBJECT."
+	"It seems like the $OBJECT would be more useful if you were lugging it around.",
+	"How do you use $A $OBJECT from across the room?",
+	"Maybe you should try picking up the $OBJECT."
 }
 
 local use_ext_not_useful = {
@@ -95,10 +95,10 @@ local use_ext_not_useful = {
 }
 
 local use_ext_not_useful_stupid = {
-  "Please find the nearest real-world instance of $A $OBJECT, and ask somebody how to use it.",
-  "Maybe you should read an instruction manual for $A $OBJECT.",
-  "You know, maybe you're going about this the wrong way.",
-  "Have you ever seen $A $OBJECT used in real life?",
+	"Please find the nearest real-world instance of $A $OBJECT, and ask somebody how to use it.",
+	"Maybe you should read an instruction manual for $A $OBJECT.",
+	"You know, maybe you're going about this the wrong way.",
+	"Have you ever seen $A $OBJECT used in real life?",
 }
 
 local use_no_used = {
@@ -380,31 +380,32 @@ game = {
 			links = {
 				north = "COSI",
 				west = "Concrete",
-        south = "SC3MBathroom",
+				south = "SC3MBathroom",
 				east = "SC3Collins",
 				down = "SC2EastStairwell",
 			},
 		},
-    SC3MBathroom = {
-      name = "the men's restroom near COSI",
-      desc = "Despite the vigilant efforts of Carol, the room has a noticeable odor.",
-      links = {
-        north = "SC3Hall",
-      },
-    },
-    SC3JankLanding = {
-      name = "a small annex with an elevator door",
-      desc = "You find your yourself in a small room with an open connection to a nearby hallway. You see some equipment no doubt used by the maintainance personnel and, perhaps most importantly, an elevator door.",
-      links = {
-        north = "Concrete"
-      }
-    },
+		SC3MBathroom = {
+			name = "the men's restroom near COSI",
+			desc = "Despite the vigilant efforts of Carol, the room has a noticeable odor.",
+			links = {
+				north = "SC3Hall",
+			},
+		},
+		SC3JankLanding = {
+			name = "a small annex with an elevator door",
+			desc = "You find your yourself in a small room with an open connection to a nearby hallway. You see some equipment no doubt used by the maintainance personnel and, perhaps most importantly, an elevator door.",
+			links = {
+				north = "Concrete"
+			}
+		},
 		Concrete = {
 			name = "Concrete Cafe",
-			desc = "The Cafe is closed right now. Everything is spotless, except for the pockmark from where a brick crashed through the skylight.",
+			desc = "The Cafe is closed right now. Everything is spotless, except for the pockmark from where a brick crashed through the skylight. A stairwell is tucked behind a corner.",
 			links = {
 				east = "SC3Hall",
-        south = "SC3JankLanding" 
+				down = "SC2WestStairwell",
+				south = "SC3JankLanding",
 			},
 			inv = Inv.clone({
 				fork = 1,
@@ -463,12 +464,13 @@ game = {
 			},
 		},
 		SC2EastStairwell = {
-			name = "the floor below COSI",
+			name = "the area one floor below COSI",
 			desc = "There are stairs going up and down a floor. A poster labelled \"Chemistry\" is on the wall.",
 			links = {
 				up = "SC3Hall",
-				--down = ""
-				east = "OutsidePeplOffice"
+				down = "SC1EastStairwell",
+				east = "OutsidePeplOffice",
+				west = "SC2Hallway",
 			},
 		},
 		OutsidePeplOffice = {
@@ -488,6 +490,7 @@ game = {
 			inv = Inv.clone({
 				whiteboard = 1,
 				marker = 1,
+				strange_flask = 1,
 			}),
 		},
 		ComputationalSingularity = {
@@ -497,12 +500,76 @@ game = {
 				up = "ServerRoom",
 			},
 		},
+		FreshmenPhysLab = {
+			name = "the Freshmen Physics Lab",
+			desc = "There is a lab session currently being held. The TA looks at you while the students work on their labs.",
+			links = {
+				north = "SC2WestStairwell",
+			},
+		},
+		SC2WestStairwell = {
+			name = "the area one floor below Concrete Cafe",
+			desc = "There are stairs going up and down a floor.",
+			links = {
+				south = "FreshmenPhysLab",
+				up = "Concrete",
+				east = "SC2Hallway"
+			}
+		},
+		SC2Hallway = {
+			name = "the hallway between the stairwells",
+			desc = "", -- Description pending
+			links = {
+				south = "ThomasOffice",
+				west = "SC2WestStairwell",
+				east = "SC2EastStairwell",
+			},
+		},
+		ThomasOffice = {
+			name = "Thomas's Office",
+			desc = "The room is a standard office for a professor. Physics problems are written out on the whiteboard.",
+			links = {
+				north = "SC2Hallway",
+			},
+			inv = Inv.clone({
+				whiteboard = 1,
+				marker = 1,
+				peculiar_gizmo = 1,
+			}),
+		},
+		SC1EastStairwell = {
+			name = "the area two floors below COSI",
+			desc = "There are stairs going up a floor. There are leaves scattered everywhere from a nearby door.",
+			links = {
+				up = "SC2EastStairwell",
+				west = "OutsideFreshmenChemLab",
+			},
+		},
+		OutsideFreshmenChemLab = {
+			name = "outside the Freshmen Chemistry Lab and Chemistry TA office",
+			desc = "You are in a typical Science Center hallway. Funny comics dot the walls.",
+			links = {
+				south = "FreshmenChemLab",
+				east = "SC1EastStairwell",
+			},
+		},
+		FreshmenChemLab = {
+			name = "the Freshmen Chemistry Lab",
+			desc = "You see some general chemistry being conducted in the room before you. Interesting lab material is drawn on the whiteboard",
+			links = {
+				north = "OutsideFreshmenChemLab",
+			},
+			inv = Inv.clone({
+				whiteboard = 1,
+				marker = 1,
+			}),
+		},
 	},
 	objects = {
 		fridge = {name = "refrigerator", desc = "A cold box usually filled with refreshing beverages and tasty victuals.", inv = Inv.clone({moxie = 1}), weight = 20},
 		moxie = {
 			name = "Moxie soda",
-			desc = "The bright orange can's fizzly liquid contents beckon to your parched throat.",
+			desc = "The bright orange can's fizzy liquid contents beckon to your parched throat.",
 			weight = 0.1,
 			use = function()
 				state.inv:add("movie", -1)
@@ -808,6 +875,65 @@ game = {
 			name = "Computational Core",
 			desc = colors.extreme .. "IT IS THE CENTER OF ALL WORLDS." .. colors.reset,
 			weight = 5,
+			on_put = function(rest)
+				if state.room ~= 'ComputationalSingularity' then
+					state.finished = colors.extreme .. "You have been deleted from the universe! Better luck next time." .. colors.reset
+					return colors.extreme .. "Our world was not meant to hold such a powerful object! " .. game.rooms[state.room].name .. " is deleted from the space-time continuum!" .. colors.reset
+				end
+			end,
+		},
+		strange_flask = {
+			name = "Strange Flask",
+			desc = "An Erlenmeyer flask with a funky liquid in it.",
+			weight = 0.5,
+			use = function(rest)
+				if state.room == 'FreshmenPhysLab' then
+					if not game.rooms[state.room].shenanigans then
+						state.inv:add("strange_flask", -1)
+						state.inv:add("empty_flask", 1)
+						game.rooms[state.room].shenanigans = true
+						game.rooms[state.room].desc = "The wrecked lab is before you. Scrap from broken machinery is all over the room, and the strange chemicals you spilled earlier still float in the room."
+						return "You open the strange flask and throw its contents into the room.\n" .. colors.big_problem .. "The chemicals, instead of falling to the ground, float in the air! This is a violation of physics!! Every computer in the lab simultaneously kernel panics. The remaining devices in the room explode like metallic popcorn. The physics TA and other students run around frantically, avoiding the still floating chemicals.\n" .. colors.problem .. "You are sure that you have lived up to \"Defy Convention\" and \"Ignite\"." .. colors.reset
+					else
+						return "You spill the chemicals again, but they don't have any further effect."
+					end
+				else
+					return "You don't see a particularly good use for this right now"
+				end
+			end,
+		},
+		empty_flask = {
+			name = "Empty Flask",
+			desc = "An empty Erlenmeyer flask",
+			weight = 0.2,
+			use = function(rest)
+				return "Empty glass labware doesn't seem all that useful here."
+			end,
+			on_put = function(rest)
+				if state.room == 'PeplOffice' then
+					game.rooms.PeplOffice.inv:add("empty_flask", -1)
+					game.rooms.PeplOffice.inv:add("strange_flask", 1)
+					return "Peploski notices the empty flask and refills it with a strange concoction."
+				end
+			end,
+		},
+		peculiar_gizmo = {
+			name = "Peculiar Gizmo",
+			desc = "An odd device the size of your palm that feels super heavy for its size and full of physical things.",
+			weight = 9.81,
+			use = function(rest)
+				if state.room == 'FreshmenChemLab' then
+					if not game.rooms[state.room].shenanigans then
+						game.rooms[state.room].shenanigans = true
+						game.rooms[state.room].desc = "The lab is covered in a rainbow dust as a result of your shenanigans. You wonder how many two weeks it will take to finish cleaning this."
+						return "You turn on the peculiar gizmo. It whirs quietly as mechanics inside it run\n" .. colors.big_problem .. "Eventually, sparks and arcs fly from the gizmo. It's producing its own energy, for free! This is a violation of thermodynamics!! All of the chemistry labs proceed in the opposite direction they are supposed to before exploding into a shower of sparkles. Everyone in the room is panicing while the TA tries to use the fire extinguisher, which is instead spraying silly string that for some reason still works.\n" .. colors.problem .. "You are sure that you have lived up to \"Defy Convention\" and \"Ignite\"." .. colors.reset
+					else
+						return "You power on the gizmo again, but it doesn't have any further effect."
+					end
+				else
+					return "You don't see a particularly good use for this right now"
+				end
+			end,
 		},
 	},
 	npcs = {
@@ -988,10 +1114,10 @@ end
 local commands
 commands = {
 	go = function(rest)
-    if state.get_room().on_go then
-      c, out = state.get_room().on_go(rest)
-      if c then return out end
-    end
+		if state.get_room().on_go then
+			c, out = state.get_room().on_go(rest)
+			if c then return out end
+		end
 		if #rest < 1 then return choose(go_empty) end
 		if state.immobile then return choose(go_immobile) end
 		local dir = rest[1]
@@ -1009,7 +1135,7 @@ commands = {
 			return template(choose(use_no_used), tpl)
 		end
 		local level = 1
-    local isinroom = nil
+		local isinroom = nil
 		local curobj = state
 		local oname, tpl, obj
 		while level <= #rest do
@@ -1020,28 +1146,28 @@ commands = {
 			end
 			local amt = curobj.inv:get(oname)
 			if amt < 1 then
-        amt = state.get_room():get_inv():get(oname)
-        if level == 1 and amt >= 1 then
-          isinroom = true
-          curobj = obj
-        else
-          return template(choose(not_in_inv), tpl)
-        end
+				amt = state.get_room():get_inv():get(oname)
+				if level == 1 and amt >= 1 then
+					isinroom = true
+					curobj = obj
+				else
+					return template(choose(not_in_inv), tpl)
+				end
 			end
-      curobj = obj
+			curobj = obj
 			level = level + 1
 		end
-    if isinroom then
-      if obj.ext_use == nil then
-        if obj.use ~= nil then return template(choose(use_ext_not_useful_except_inv), tpl) end
-        return template(choose(use_not_useful), tpl)
-      end
-		  return obj.ext_use({table.unpack(rest, level + 1)})
-    else
-      if obj.use == nil then
-        return template(choose(use_not_useful), tpl)
-      end
-    end
+		if isinroom then
+			if obj.ext_use == nil then
+				if obj.use ~= nil then return template(choose(use_ext_not_useful_except_inv), tpl) end
+				return template(choose(use_not_useful), tpl)
+			end
+			return obj.ext_use({table.unpack(rest, level + 1)})
+		else
+			if obj.use == nil then
+				return template(choose(use_not_useful), tpl)
+			end
+		end
 		return obj.use({table.unpack(rest, level + 1)})
 	end,
 	take = function(rest)
@@ -1054,7 +1180,7 @@ commands = {
 			if obj == nil then
 				return template(choose(bad_name), tpl)
 			end
-			if curinv:is_empty() then 
+			if curinv:is_empty() then
 				return choose(take_room_empty)
 			end
 			local amt = curinv:get(oname)
@@ -1116,6 +1242,13 @@ commands = {
 		if #rest >= 2 then
 			tpl.DEST = invoname
 			return template(choose(put_success_into), tpl)
+		elseif obj.on_put ~= nil then
+			puttext = obj.on_put()
+			if puttext ~= nil then
+				return template(choose(put_success), tpl) .. "\n" .. puttext
+			else
+				return template(choose(put_success), tpl)
+			end
 		else
 			return template(choose(put_success), tpl)
 		end
@@ -1161,7 +1294,7 @@ commands = {
 				ret = ret .. "\nThere " .. copula .. " " .. desc
 			end
 		end
-		if state.inv:is_empty() then 
+		if state.inv:is_empty() then
 			ret = ret .. "\nYou are not carrying anything."
 		else
 			for oname, amt in pairs(state.inv) do
@@ -1238,7 +1371,7 @@ function print_status()
 	for dir, rm in pairs(room:get_links()) do
 		local rmo = game.rooms[rm]
 		if rmo ~= nil then
-			local rmoname = rmo.name:sub(0,1):upper() .. rmo.name:sub(2)	
+			local rmoname = rmo.name:sub(0,1):upper() .. rmo.name:sub(2)
 			ret = ret .. "\n" .. rmoname .. " is " .. link_desc[dir] .. "."
 		end
 	end
