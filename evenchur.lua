@@ -409,6 +409,7 @@ game = {
 			},
 			inv = Inv.clone({
 				fork = 1,
+				spoon = 1,
 			}),
 		},
 		Outside = {
@@ -788,6 +789,33 @@ game = {
 				return colors.big_problem .. "What have you done?!" .. colors.reset
 			end,
 		},
+		spoon = {
+			name = "spoon",
+			desc = "It's a small white biodegradable plastic spoon.",
+			weight = 0.04,
+			use = function(rest)
+				if #rest < 1 then return choose(used_empty) end
+				if rest[1] ~= "duplicator" then
+					return "You can't quite figure out how to do that."
+				end
+				if state.inv:get("duplicator") < 1 then
+					return colors.problem .. "You don't have it yet." .. colors.reset
+				end
+				state.inv:add("spoon", -1)
+				state.inv:add("duplicator", -1)
+				state.inv:add("spoon_bomb", 1)
+				return colors.status .. "You create the " ..colors.item .. "spoon_bomb" .. colors.status .. "." .. colors.reset
+			end,
+		},
+		spoon_bomb = {
+			name = "Spoon Bomb",
+			desc = colors.status .. "It radiates with imaginable power." .. colors.reset,
+			weight = 0.13,
+			use = function()
+				state.spoon_bombing = 3
+				return colors.status .. "...What have you done?" .. colors.reset
+			end,
+		},
 		whiteboard = {
 			name = "Whiteboard",
 			desc = "Nothing is written on it.",
@@ -804,7 +832,7 @@ game = {
 				if state.room == 'ComputationalSingularity' then
 					local ex = table.concat(rest, " ")
 					if ex:sub(0, 1) == "=" then ex = "return " .. ex:sub(2) end
-					local chunk, err = load(ex)
+					local chunk, err = load(ex, '=(marker.use)', 'bt', _ENV)
 					if chunk == nil then
 						if state.debug then
 							print(colors.debug .. "The error is: " .. tostring(err) .. colors.reset)
@@ -816,7 +844,7 @@ game = {
 					local ok, result = pcall(chunk)
 					if not ok then
 						if state.debug then
-							print(colors.debug .. "The error is: " .. tostring(err) .. colors.reset)
+							print(colors.debug .. "The error is: " .. tostring(result) .. colors.reset)
 						end
 						state.cs_err_cnt = state.cs_err_cnt + 1
 						if state.cs_err_cnt >= 3 then game.npcs.tino.room = "ComputationalSingularity" end
@@ -947,6 +975,11 @@ game = {
 				local inv = room:get_inv()
 				inv:add("fork_bomb", inv:get("fork_bomb"))
 			end
+			if state.spoon_bombing == 0 then
+				local inv = room:get_inv()
+				local amt = inv:get("spoon_bomb")
+				if amt > 0 then inv:add("spoon_bomb", 1) end
+			end
 		end
 		game.rooms.ComputationalSingularity.desc = colors.extreme .. choose(cs_names) .. colors.reset
 		if state.fork_bombing == 0 then
@@ -957,9 +990,21 @@ game = {
 				obj.inv:add("fork_bomb", obj.inv:get("fork_bomb"))
 			end
 		end
+		if state.spoon_bombing == 0 then
+			if state.inv:get("spoon_bomb") > 0 then state.inv:add("spoon_bomb", 1) end
+		end
+		for oname, obj in pairs(game.objects) do
+			if state.spoon_bombing == 0 and obj.inv ~= nil then
+				if obj.inv:get("spoon_bomb") > 0 then obj.inv:add("spoon_bomb", 1) end
+			end
+		end
 		if state.fork_bombing ~= nil and state.fork_bombing > 0 then
 			ret = ret .. colors.big_problem .. "\nYou have " .. tostring(state.fork_bombing) .. " seconds before things get ugly." .. colors.reset
 			state.fork_bombing = state.fork_bombing - 1
+		end
+		if state.spoon_bombing ~= nil and state.spoon_bombing > 0 then
+			ret = ret .. colors.status .. "\nYou have " .. tostring(state.spoon_bombing) .. " seconds before things get interesting?" .. colors.reset
+			state.spoon_bombing = state.spoon_bombing - 1
 		end
 		if state.get_room("Collins").extinguished then
 			state.finished = colors.big_problem .. "Tony Collins has decided to expel you from the university in thanks for the new powder coating in his room. Better luck next time!" .. colors.reset
