@@ -5,7 +5,7 @@ Inv.mt = {
 
 local colors = {
 	reset = "\x1b[m",
-	prompt = "\x1b[1;35m",
+	prompt = "\x1b[1;37m",
 	item = "\x1b[1;36m",
 	status = "\x1b[32m",
 	problem = "\x1b[33m",
@@ -45,7 +45,7 @@ local go_fail = {
 	"You cannot go $DIRECTION.",
 	"Your passage $DESCR is blocked.",
 	"A wall greets you $DESCR.",
-	"$DESCR is impassible.",
+	"The path $DESCR is impassible.",
 }
 
 local go_empty = {
@@ -195,6 +195,47 @@ local cs_success = {
 	"AN INFINITE HIERARCHY OF STRUCTURE BEARS DOWN UPON THEE AND CALLS $RESULT INTO EXISTENCE.",
 }
 
+local hd_empty = {
+	"You stare blanky at the " .. colors.item .. "hammerdrill" .. colors.reset .. " in $RAWROOM.",
+	"The " .. colors.item .. "hammerdrill" .. colors.reset .. " beckons from within $RAWROOM.",
+	"You're in $RAWROOM, holding a " .. colors.item .. "hammerdrill" .. colors.reset .. ".",
+}
+
+local hd_no_name = {
+	"As much as you'd like to, you cannot fathom breaking this wall into a nameless room.",
+	"You hesitate, thinking about the name of the room you're about to break into.",
+	"A room on the other side of the wall beckons your drill, but you might want to give it a name.",
+}
+
+local hd_wrong_name_type = {
+	"You're pretty sure you can only give one name to a room.",
+	"It seems odd that a room would have multiple names.",
+	"That room probably doesn't have that many names.",
+}
+
+local hd_no_dir = {
+	"You're not sure which wall to drill.",
+	"Which direction do you want to go?",
+	"What direction are you drilling in?",
+}
+
+local hd_wrong_dir_type = {
+	"You're pretty sure you can't drill in multiple directions at once.",
+	"Choose one, and only one, direction to drill in.",
+	"Out of those, which singular direction do you actually want to drill in?",
+}
+
+local hd_bad_reverse = {
+	"You would carve a link $DESC, but you can't figure out what the reverse direction would be (try 'norvs true' or 'noreverse true').",
+	"You can't figure out what the opposite of $DIR is (try 'norvs true' or 'noreverse true').",
+}
+
+local hd_success = {
+	"You smash through the wall and find $ROOM on the other side.",
+	"After some loud drilling, you create a passage to $ROOM.",
+	"As the chips of concrete fall and the dust subsides, $ROOM peeks through the new hole.",
+}
+
 local vowel = {
 	a = true,
 	e = true,
@@ -210,6 +251,15 @@ local link_alias = {
 	w = "west",
 	u = "up",
 	d = "down",
+}
+
+local link_reverse = {
+	north = "south",
+	south = "north",
+	east = "west",
+	west = "east",
+	up = "down",
+	down = "up",
 }
 
 local link_desc = setmetatable({
@@ -231,6 +281,31 @@ local prepositions = {
 	with = true,
 	from = true,
 }
+
+local function to_key_values(rest)
+	local ret = {}
+	local k = nil
+	for idx, word in ipairs(rest) do
+		if word == "and" then
+			-- pass
+		else
+			if k ~= nil then
+				if ret[k] ~= nil then
+					if type(ret[k]) ~= "table" then
+						ret[k] = {ret[k]}
+					end
+					table.insert(ret[k], word)
+				else
+					ret[k] = word
+				end
+				k = nil
+			else
+				k = word
+			end
+		end
+	end
+	return ret
+end
 
 local game
 
@@ -933,6 +1008,91 @@ game = {
 				else
 					return "You don't see a particularly good use for this right now"
 				end
+			end,
+		},
+		parse_debugger = {
+			name = "Parse Debugger",
+			desc = "It appears to be made of bits.",
+			weight = 0.1,
+			use = function(rest)
+				local kv = to_key_values(rest)
+				for k, v in pairs(kv) do
+					if type(v) == "table" then
+						print(k)
+						for _, i in ipairs(v) do
+							print("", i)
+						end
+					else
+						print(k, v)
+					end
+				end
+				return "Done."
+			end,
+		},
+		hammerdrill = {
+			name = "Hammer Drill",
+			desc = "It's a drill that is also a hammer.",
+			weight = 3,
+			use = function(rest)
+				if #rest == 0 then
+					return template(choose(hd_empty), {RAWROOM = state.room})
+				end
+				local kv = to_key_values(rest)
+				local name = kv.name
+				if name == nil then return choose(hd_no_name) end
+				if type(name) ~= "string" then return choose(hd_wrong_name_type) end
+				local dir = kv.direction or kv.dir
+				if dir == nil then return choose(hd_no_dir) end
+				if type(dir) ~= "string" then return choose(hd_wrong_dir_type) end
+				if link_alias[dir] ~= nil then
+					dir = link_alias[dir]
+				end
+				local norvs = kv.noreverse or kv.norvs
+				local rvsdir = nil
+				if not norvs then
+					rvsdir = link_reverse[dir]
+					if rvsdir == nil then
+						return template(choose(hd_bad_reverse), {DIR = dir, DESC = link_desc[dir]})
+					end
+				end
+				local rm = game.rooms[name]
+				if rm ~= nil then
+					state.get_room():get_links()[dir] = name
+					if not norvs then
+						rm.links[rvsdir] = state.room
+					end
+					return template(choose(hd_success), {HERE = state.get_room().name, ROOM = rm.name})
+				end
+				local roomobj = {name = name, desc = kv.description or kv.desc, links = {}, inv = Inv()}
+				if not norvs then
+					roomobj.links[rvsdir] = state.room
+				end
+				local ldir, lname = kv.link, kv.to
+				if ldir ~= nil and lname ~= nil then
+					if type(ldir) == "string" then ldir = {ldir} end
+					if type(lname) == "string" then lname = {lname} end
+					local maxidx = math.min(#ldir, #lname)
+					for idx = 1, maxidx do
+						roomobj.links[ldir[idx]] = lname[idx]
+						if not norvs then
+							rvsdir = link_reverse[dir]
+							if rvsdir == nil then
+								return template(choose(hd_bad_reverse), {DIR = dir, DESC = link_desc[dir]})
+							end
+							state.get_room(lname[idx]):get_links()[rvsdir] = name
+						end
+					end
+				end
+				local withs = kv.with
+				if withs ~= nil then
+					if type(withs) == "string" then withs = {withs} end
+					for _, with in ipairs(withs) do
+						roomobj.inv:add(with, 1)
+					end
+				end
+				game.rooms[name] = roomobj
+				state.get_room():get_links()[dir] = name
+				return template(choose(hd_success), {ROOM = name})
 			end,
 		},
 	},
