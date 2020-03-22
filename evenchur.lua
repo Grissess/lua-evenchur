@@ -236,6 +236,37 @@ local hd_success = {
 	"As the chips of concrete fall and the dust subsides, $ROOM peeks through the new hole.",
 }
 
+local tino_kills = {
+	"administers a Tino exam!",
+	"hits you with a log!",
+	"summons a dragon!",
+	"pulverizes you!",
+	"measures you!",
+}
+
+local shell_no_code = {
+	"You look dumbly at the terminal. A Lua prompt blinks dumbly back at you.",
+	"The Lua prompt doesn't know what to run.",
+}
+
+local shell_syntax_err = {
+	"Before it can even run, Lua flatly responds: $ERROR",
+	"The Lua prompt looks at you, unmoved, and says $ERROR.",
+	"With a total lack of comprehension, the Lua prompt only manages: $ERROR",
+}
+
+local shell_runtime_err = {
+	"The Lua you wrote was malignant, due to $ERROR.",
+	"Lua tried your program, but crashed with $ERROR.",
+	"All looked well until $ERROR happened.",
+}
+
+local shell_success = {
+	"The shell dutifully responds to you: $RESULT",
+	"Almost immediately, the Lua prompt spits $RESULT back at you.",
+	"A $RESULT is made available to you.",
+}
+
 local vowel = {
 	a = true,
 	e = true,
@@ -819,6 +850,27 @@ game = {
 				return colors.problem .. "Whoosh!" .. colors.reset
 			end,
 		},
+		shell = {
+			name = "Shell",
+			desc = "It appears to be made of bits.",
+			weight = 0.1,
+			use = function(rest)
+				if #rest < 1 then
+					return colors.problem .. choose(shell_no_code) .. colors.reset
+				end
+				local ex = table.concat(rest, " ")
+				if ex:sub(0, 1) == "=" then ex = "return " .. ex:sub(2) end
+				local chunk, err = load(ex, "=(shell.use)", 'bt', _ENV)
+				if chunk == nil then
+					return colors.problem .. template(choose(shell_syntax_err), {ERROR = colors.big_problem .. tostring(err) .. colors.problem}) .. colors.reset
+				end
+				local ok, res = pcall(chunk)
+				if not ok then
+					return colors.problem .. template(choose(shell_runtime_err), {ERROR = colors.big_problem .. tostring(res) .. colors.problem}) .. colors.reset
+				end
+				return template(choose(shell_success), {RESULT = colors.item .. tostring(res) .. colors.reset})
+			end,
+		},
 		flamethrower = {
 			name = "Flamethrower",
 			desc = "It has a tank and a pilot light which is lit.",
@@ -1106,7 +1158,7 @@ game = {
 				if self.room == state.room then
 					if self.room == 'ComputationalSingularity' then
 						state.finished = describe_npc(self) .. colors.big_problem .. " has decided to destroy you for finding the secrets of his vast power. Better luck next time!" .. colors.reset
-						return describe_npc(self) .. colors.big_problem .. " administers a Tino Exam!" .. colors.reset
+						return describe_npc(self) .. colors.big_problem .. " " .. choose(tino_kills) .. colors.reset
 					end
 				end
 				ai_wander(self)
@@ -1118,7 +1170,7 @@ game = {
 		},
 	},
 	post_tick = function()
-		local ret = ''
+		local ret, torem = '', {}
 		for name, room in pairs(game.rooms) do
 			room = Room.from(room)
 			if room.extinguished and room.on_fire then room.on_fire = nil end
@@ -1131,15 +1183,35 @@ game = {
 					end
 				end
 			end
+			local inv = room:get_inv()
 			if state.fork_bombing == 0 then
-				local inv = room:get_inv()
 				inv:add("fork_bomb", inv:get("fork_bomb"))
 			end
 			if state.spoon_bombing == 0 then
-				local inv = room:get_inv()
 				local amt = inv:get("spoon_bomb")
 				if amt > 0 then inv:add("spoon_bomb", 1) end
 			end
+			if inv:total_weight() > 1000000 then
+				torem[name] = true
+				if state.room == name then
+					ret = ret .. colors.problem .. "Reeling from the items inside, " .. room.name .. " collapses into itself!\n" .. colors.reset
+					state.finished = colors.big_problem .. "Unfortunately, the collapsing room took you with it! Better luck next time!" .. colors.reset
+				else
+					ret = ret .. colors.problem .. "In the distance, from somewhere near " .. room.name .. ", you think you hear something loud, and then...silence.\n" .. colors.reset
+				end
+			end
+		end
+		for n, rm in pairs(game.rooms) do
+			rm = Room.from(rm)
+			local links = rm:get_links()
+			for dir, lnk in pairs(links) do
+				if torem[lnk] then links[dir] = nil end
+			end
+		end
+		for k, _ in pairs(torem) do game.rooms[k] = nil end
+		if not game.rooms.ComputationalSingularity then
+			state.finished = colors.extreme .. "FOR A BRIEF MOMENT, ALL OF REALITY FRACTURES INTO COUNTLESS CATERWAULING FRAGMENTS, A SCREECH OF FOREBODING DEMISE FLOODING TO THE FURTHEST CORNERS OF EXISTENCE, AND THEN..." .. colors.reset
+			return ret
 		end
 		game.rooms.ComputationalSingularity.desc = colors.extreme .. choose(cs_names) .. colors.reset
 		if state.fork_bombing == 0 then
@@ -1159,11 +1231,11 @@ game = {
 			end
 		end
 		if state.fork_bombing ~= nil and state.fork_bombing > 0 then
-			ret = ret .. colors.big_problem .. "\nYou have " .. tostring(state.fork_bombing) .. " seconds before things get ugly." .. colors.reset
+			ret = ret .. colors.big_problem .. "\nYou have " .. tostring(state.fork_bombing) .. " seconds before things get ugly.\n" .. colors.reset
 			state.fork_bombing = state.fork_bombing - 1
 		end
 		if state.spoon_bombing ~= nil and state.spoon_bombing > 0 then
-			ret = ret .. colors.status .. "\nYou have " .. tostring(state.spoon_bombing) .. " seconds before things get interesting?" .. colors.reset
+			ret = ret .. colors.status .. "\nYou have " .. tostring(state.spoon_bombing) .. " seconds before things get interesting?\n" .. colors.reset
 			state.spoon_bombing = state.spoon_bombing - 1
 		end
 		if state.get_room("Collins").extinguished then
