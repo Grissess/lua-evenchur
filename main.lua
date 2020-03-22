@@ -1,4 +1,5 @@
 package.path = "./?.lua;" .. package.path
+math.randomseed(os.time())
 local evenchur = require('evenchur')
 
 while true do
