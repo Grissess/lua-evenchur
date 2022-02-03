@@ -1552,6 +1552,11 @@ commands = {
 	end,
 }
 
+for alias, dir in pairs(link_alias) do
+  commands[alias] = function(rest) return commands.go({dir}) end
+end
+
+
 local exec_empty = {
 	"Speak up, son!",
 	"Excuse me?",
