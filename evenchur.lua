@@ -712,7 +712,7 @@ game = {
 			use = function()
 				state.inv:add("empty_fire_extinguisher", -1)
 				state.inv:add("fire_extinguisher", 1)
-				return "Because you need it, and definitely not because some programmer was lazy, Richard Stallman descends from the heavens and refills your fire extinguisher."
+				return "Because you need it, and definitely not because some programmer was lazy, Charles Babbage descends from the heavens and refills your fire extinguisher."
 			end,
 		},
 		vacuum = {
@@ -1624,4 +1624,6 @@ return {
 	commands = commands,
 	exec = exec,
 	print_status = print_status,
+	link_alias = link_alias,
+	prepositions = prepositions,
 }
